@@ -13,6 +13,7 @@ btn2 = 20
 
 Music = Music(buzzerPin)
 
+exitGame=False
 btn1_status = False
 btn2_status = False
 
@@ -150,10 +151,27 @@ def btn2Push(ev=None):
 
 def winner(winner):
     global game_status
+    global exitGame
     game_status = False
     lcd_string("The winner is...",LCD_LINE_1)
     lcd_string("..." + winner,LCD_LINE_2)
     Music.starWars(buzzerPin)
+    lcd_string("Play again?",LCD_LINE_1)
+    lcd_string("Y/N",LCD_LINE_2)
+    try:
+        continue=input("Enter Y to play again, or N to exit the game")
+    except:
+        continue=input("Enter only Y or N")
+    
+    if continue =="Y" or "y":
+        exitGame=False
+    elseif continue =="N" or "n":
+        exitGame=True
+        lcd_string("Game over",LCD_LINE_1)
+        lcd_string("Bye bye",LCD_LINE_2)
+        print("Thank you for playing our game")
+    
+    
     
 def incrementLight(btn):
     global LI_btn1
@@ -217,10 +235,11 @@ def destroy():
 
 
 lcd_init()
-startMessage()
 setup()
 try:
-    trafficLight()
+    while not exitGame:
+        startMessage()
+        trafficLight()
 except KeyboardInterrupt:
     destroy()
 finally:
