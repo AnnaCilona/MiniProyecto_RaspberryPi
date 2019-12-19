@@ -1,10 +1,14 @@
 import RPi.GPIO as GPIO
 import time
 from buzzerMusic import BuzzerMusic as Music
-import smbus
+from ledScreen import LedScreen
 
-ledPin1 = [26,19,13,6]
-ledPin2 = [18,23,24,25]
+ledScreen = LedScreen()
+
+ledPinArray1 = [26,19,13,6]
+ledPinArray2 = [18,23,24,25]
+global ledPin1
+global ledPin2
 
 buzzerPin = 12
 btn1 = 21
@@ -17,125 +21,53 @@ btn2_status = False
 
 game_status = False
 
-LI_btn1 = 0
-LI_btn2 = 0
-
-i = -1
-j = -1
-
 player1=""
 player2=""
 
-#LCD
-# Define some device parameters
-I2C_ADDR  = 0x27 # I2C device address, if any error, change this address to 0x27
-LCD_WIDTH = 16   # Maximum characters per line
-
-# Define some device constants
-LCD_CHR = 1 # Mode - Sending data
-LCD_CMD = 0 # Mode - Sending command
-
-LCD_LINE_1 = 0x80 # LCD RAM address for the 1st line
-LCD_LINE_2 = 0xC0 # LCD RAM address for the 2nd line
-LCD_LINE_3 = 0x94 # LCD RAM address for the 3rd line
-LCD_LINE_4 = 0xD4 # LCD RAM address for the 4th line
-
-LCD_BACKLIGHT  = 0x08  # On
-#LCD_BACKLIGHT = 0x00  # Off
-
-ENABLE = 0b00000100 # Enable bit
-
-# Timing constants
-E_PULSE = 0.0005
-E_DELAY = 0.0005
-
-#Open I2C interface
-bus = smbus.SMBus(1) # Rev 2 Pi uses 1
-
-def lcd_init():
-  # Initialise display
-  lcd_byte(0x33,LCD_CMD) # 110011 Initialise
-  lcd_byte(0x32,LCD_CMD) # 110010 Initialise
-  lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
-  lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off
-  lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
-  lcd_byte(0x01,LCD_CMD) # 000001 Clear display
-  time.sleep(E_DELAY)
-
-def lcd_byte(bits, mode):
-  # Send byte to data pins
-  # bits = the data
-  # mode = 1 for data
-  #        0 for command
-
-  bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT
-  bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT
-
-  # High bits
-  bus.write_byte(I2C_ADDR, bits_high)
-  lcd_toggle_enable(bits_high)
-
-  # Low bits
-  bus.write_byte(I2C_ADDR, bits_low)
-  lcd_toggle_enable(bits_low)
-
-def lcd_toggle_enable(bits):
-  # Toggle enable
-  time.sleep(E_DELAY)
-  bus.write_byte(I2C_ADDR, (bits | ENABLE))
-  time.sleep(E_PULSE)
-  bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
-  time.sleep(E_DELAY)
-  #end of LCD setup
-
-def lcd_string(message,line):
-  # Send string to display
-  message = message.ljust(LCD_WIDTH," ")
-  lcd_byte(line, LCD_CMD)
-  for i in range(LCD_WIDTH):
-    lcd_byte(ord(message[i]),LCD_CHR)
-
 def setup():
-    global leds1
+    global ledPin1
+    global ledPin2
+    
     GPIO.setwarnings(False)
-    #set the gpio modes to BCM numbering
+
     GPIO.setmode(GPIO.BCM)
-    #set all LedPin's mode to output,and initial level to HIGH(3.3V)
-    GPIO.setup(ledPin1,GPIO.OUT,initial=GPIO.LOW)
-    GPIO.setup(ledPin2,GPIO.OUT,initial=GPIO.LOW)
+
+    GPIO.setup(ledPinArray1,GPIO.OUT,initial=GPIO.LOW)
+    GPIO.setup(ledPinArray2,GPIO.OUT,initial=GPIO.LOW)
 
     GPIO.setup(buzzerPin, GPIO.OUT, initial=GPIO.HIGH)
 
     GPIO.setup(btn1,GPIO.IN,pull_up_down = GPIO.PUD_UP)
     GPIO.setup(btn2,GPIO.IN,pull_up_down = GPIO.PUD_UP)
-
+    
+    ledPin1=[GPIO.PWM(ledPinArray1[x],100)for x in range(4)]
+    ledPin2=[GPIO.PWM(ledPinArray2[x],100)for x in range(4)]
+    
     for x in range(4):
-        ledPin1[x] = GPIO.PWM(ledPin1[x],100)
-        ledPin2[x] = GPIO.PWM(ledPin2[x],100)
         ledPin1[x].start(100)
         ledPin2[x].start(100)
 
     GPIO.add_event_detect(btn1,GPIO.FALLING, callback = btn1Push)
     GPIO.add_event_detect(btn2,GPIO.FALLING, callback = btn2Push)
-    
-        
+
 def startMessage():
     global player1
     global player2
-    lcd_string("Insert a name",LCD_LINE_1)
-    lcd_string("for player 1",LCD_LINE_2)
+    ledScreen.lcd_string("Insert a name",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string("for player 1",ledScreen.LCD_LINE_2)
     player1=input("Player1= ")
-    lcd_string("Player 1 is ",LCD_LINE_1)
-    lcd_string(player1,LCD_LINE_2)
+    ledScreen.lcd_string("Player 1 is ",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string(player1,ledScreen.LCD_LINE_2)
 
-    lcd_string("Insert a name",LCD_LINE_1)
-    lcd_string("for player 2",LCD_LINE_2)
+    ledScreen.lcd_string("Insert a name",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string("for player 2",ledScreen.LCD_LINE_2)
     player2=input("Player2= ")
-    lcd_string("Player 2 is ",LCD_LINE_1)
-    lcd_string(player2,LCD_LINE_2)
-    lcd_string("",LCD_LINE_1)
-    lcd_string("",LCD_LINE_2)
-    
+    ledScreen.lcd_string("Player 2 is ",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string(player2,ledScreen.LCD_LINE_2)
+
+    ledScreen.lcd_string("Ready to play...",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string("",ledScreen.LCD_LINE_2)
+
 
 def btn1Push(ev=None):
     global game_status
@@ -150,18 +82,22 @@ def btn2Push(ev=None):
 def winner(winner):
     global game_status
     game_status = False
-    lcd_string("The winner is...",LCD_LINE_1)
-    lcd_string("..." + winner,LCD_LINE_2)
-    Music.starWars(buzzerPin)    
+    ledScreen.lcd_string("The winner is...",ledScreen.LCD_LINE_1)
+    ledScreen.lcd_string("..." + winner,ledScreen.LCD_LINE_2)
+    Music.starWars(buzzerPin)
+    for i in range(4):
+        ledPin1[i].ChangeDutyCycle(100)
+        ledPin2[i].ChangeDutyCycle(100)
+    menu()
+
 
 def incrementLight(btn):
     global LI_btn1
     global LI_btn2
-    global i
-    global j
+    global ledOn1
+    global ledOn2
     global player1
     global player2
-    global winner
 
     if btn == btn1:
         if LI_btn1 != 0:
@@ -169,9 +105,9 @@ def incrementLight(btn):
         else:
             LI_btn1 = 100
         if LI_btn1 == 100:
-            i = i+1
-        if i < 4:
-            ledPin1[i].ChangeDutyCycle(LI_btn1)
+            ledOn1 = ledOn1+1
+        if ledOn1 < 4:
+            ledPin1[ledOn1].ChangeDutyCycle(LI_btn1)
         else:
             winner(player1)
     elif btn == btn2:
@@ -180,9 +116,9 @@ def incrementLight(btn):
         else:
             LI_btn2 = 100
         if LI_btn2 == 100:
-            j = j+1
-        if j < 4:
-            ledPin2[j].ChangeDutyCycle(LI_btn2)
+            ledOn2 = ledOn2+1
+        if ledOn2 < 4:
+            ledPin2[ledOn2].ChangeDutyCycle(LI_btn2)
         else:
             winner(player2)
     else:
@@ -205,6 +141,41 @@ def trafficLight():
     GPIO.output(buzzerPin,GPIO.HIGH)
     game_status = True
 
+def menu():
+    global LI_btn1
+    global LI_btn2
+    global ledOn1
+    global ledOn2
+    LI_btn1 = 0
+    LI_btn2 = 0
+    ledOn1 = -1
+    ledOn2 = -1
+    try:
+        choice=int(input("Choose an option:\n 1)Play new game\n 2)Repeat game\n 3)Exit game\n"))
+        if choice==1:
+            startMessage()
+            trafficLight()
+        elif choice==2:
+            GPIO.output(buzzerPin, GPIO.HIGH)
+            for i in range(4):
+                ledPin1[i].ChangeDutyCycle(100)
+                ledPin2[i].ChangeDutyCycle(100)
+            print("Get ready to play again")    
+            ledScreen.lcd_string("You choose to...",ledScreen.LCD_LINE_1)
+            ledScreen.lcd_string("...play again",ledScreen.LCD_LINE_2)
+            trafficLight()
+        elif choice==3:
+            print("Thank you for playing our game")
+            ledScreen.lcd_string("Game over",ledScreen.LCD_LINE_1)
+            ledScreen.lcd_string("Bye bye",ledScreen.LCD_LINE_2)
+            time.sleep(10)
+        else:
+            print("Enter only numbers, 1 or 2 or 3")
+            menu()
+    except:
+        print("Something went wrong")
+        menu()
+
 def destroy():
     # Release resource
     GPIO.output(buzzerPin, GPIO.HIGH)
@@ -214,16 +185,11 @@ def destroy():
     GPIO.cleanup()
     pass
 
-
-lcd_init()
-setup()
 try:
-    startMessage()
-    trafficLight()
+    ledScreen.lcd_init()
+    setup()
+    menu()
 except KeyboardInterrupt:
     destroy()
 finally:
-    lcd_byte(0x01, LCD_CMD)
-
-
-
+    ledScreen.lcd_byte(0x01, ledScreen.LCD_CMD)
