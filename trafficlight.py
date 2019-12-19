@@ -3,7 +3,6 @@ import time
 from buzzerMusic import BuzzerMusic as Music
 import smbus
 
-
 ledPin1 = [26,19,13,6]
 ledPin2 = [18,23,24,25]
 
@@ -13,7 +12,6 @@ btn2 = 20
 
 Music = Music(buzzerPin)
 
-exitGame=False
 btn1_status = False
 btn2_status = False
 
@@ -59,7 +57,7 @@ def lcd_init():
   lcd_byte(0x33,LCD_CMD) # 110011 Initialise
   lcd_byte(0x32,LCD_CMD) # 110010 Initialise
   lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
-  lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off 
+  lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off
   lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
   lcd_byte(0x01,LCD_CMD) # 000001 Clear display
   time.sleep(E_DELAY)
@@ -97,6 +95,30 @@ def lcd_string(message,line):
   for i in range(LCD_WIDTH):
     lcd_byte(ord(message[i]),LCD_CHR)
 
+def setup():
+    global leds1
+    GPIO.setwarnings(False)
+    #set the gpio modes to BCM numbering
+    GPIO.setmode(GPIO.BCM)
+    #set all LedPin's mode to output,and initial level to HIGH(3.3V)
+    GPIO.setup(ledPin1,GPIO.OUT,initial=GPIO.LOW)
+    GPIO.setup(ledPin2,GPIO.OUT,initial=GPIO.LOW)
+
+    GPIO.setup(buzzerPin, GPIO.OUT, initial=GPIO.HIGH)
+
+    GPIO.setup(btn1,GPIO.IN,pull_up_down = GPIO.PUD_UP)
+    GPIO.setup(btn2,GPIO.IN,pull_up_down = GPIO.PUD_UP)
+
+    for x in range(4):
+        ledPin1[x] = GPIO.PWM(ledPin1[x],100)
+        ledPin2[x] = GPIO.PWM(ledPin2[x],100)
+        ledPin1[x].start(100)
+        ledPin2[x].start(100)
+
+    GPIO.add_event_detect(btn1,GPIO.FALLING, callback = btn1Push)
+    GPIO.add_event_detect(btn2,GPIO.FALLING, callback = btn2Push)
+    
+        
 def startMessage():
     global player1
     global player2
@@ -113,31 +135,7 @@ def startMessage():
     lcd_string(player2,LCD_LINE_2)
     lcd_string("",LCD_LINE_1)
     lcd_string("",LCD_LINE_2)
-
-def setup():
-    global leds1
-    GPIO.setwarnings(False)
-    #set the gpio modes to BCM numbering
-    GPIO.setmode(GPIO.BCM)
-    #set all LedPin's mode to output,and initial level to HIGH(3.3V)
-    GPIO.setup(ledPin1,GPIO.OUT,initial=GPIO.LOW)
-    GPIO.setup(ledPin2,GPIO.OUT,initial=GPIO.LOW)
-
-    GPIO.setup(buzzerPin, GPIO.OUT, initial=GPIO.HIGH)
-
-    GPIO.setup(btn1,GPIO.IN,pull_up_down = GPIO.PUD_UP)
-    GPIO.setup(btn2,GPIO.IN,pull_up_down = GPIO.PUD_UP)
     
-    
-    for x in range(4):
-        ledPin1[x] = GPIO.PWM(ledPin1[x],100)
-        ledPin2[x] = GPIO.PWM(ledPin2[x],100)
-        ledPin1[x].start(100)
-        ledPin2[x].start(100)
-
-    GPIO.add_event_detect(btn1,GPIO.FALLING, callback = btn1Push)
-    GPIO.add_event_detect(btn2,GPIO.FALLING, callback = btn2Push)
-
 
 def btn1Push(ev=None):
     global game_status
@@ -151,28 +149,11 @@ def btn2Push(ev=None):
 
 def winner(winner):
     global game_status
-    global exitGame
     game_status = False
     lcd_string("The winner is...",LCD_LINE_1)
     lcd_string("..." + winner,LCD_LINE_2)
-    Music.starWars(buzzerPin)
-    lcd_string("Play again?",LCD_LINE_1)
-    lcd_string("Y/N",LCD_LINE_2)
-    try:
-        continue=input("Enter Y to play again, or N to exit the game")
-    except:
-        continue=input("Enter only Y or N")
-    
-    if continue =="Y" or "y":
-        exitGame=False
-    elseif continue =="N" or "n":
-        exitGame=True
-        lcd_string("Game over",LCD_LINE_1)
-        lcd_string("Bye bye",LCD_LINE_2)
-        print("Thank you for playing our game")
-    
-    
-    
+    Music.starWars(buzzerPin)    
+
 def incrementLight(btn):
     global LI_btn1
     global LI_btn2
@@ -237,9 +218,8 @@ def destroy():
 lcd_init()
 setup()
 try:
-    while not exitGame:
-        startMessage()
-        trafficLight()
+    startMessage()
+    trafficLight()
 except KeyboardInterrupt:
     destroy()
 finally:
